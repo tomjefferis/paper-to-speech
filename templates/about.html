@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>{% block title %}About Paper to Speech{% endblock %}</h1>
+    <p>This application allows you to easily convert various file formats to MP3 format.</p>
+    <p>Simply drag and drop your file onto the drop area on the home page, and the converted file will be automatically downloaded.</p>
+    <p>Supported file formats include:</p>
+    <ul>
+        <li>PDF documents (.pdf)</li>
+        <li>Text files (.txt)</li>
+        <li>Images (.png, .jpg, .jpeg, .gif)</li>
+        <li>Word documents (.docx)</li>
+    </ul>
+    <p>Note: Files are automatically deleted from the server after download for privacy.</p>
+{% endblock %}

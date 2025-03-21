@@ -1,0 +1,6 @@
+flask
+werkzeug
+PyPDF2
+python-docx
+google-genai
+python-dotenv

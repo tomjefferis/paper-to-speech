@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>{% block title %}Paper to Speech Converter{% endblock %}</h1>
+    <p>Drop your file below to convert it to MP3 format.</p>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <ul class="flashes">
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+
+    <div id="drop-area">
+        <form class="my-form" method="POST" enctype="multipart/form-data" action="{{ url_for('home') }}">
+            <p>Drag and drop file here or click to select</p>
+            <input type="file" id="fileElem" name="file" accept=".txt,.pdf,.png,.jpg,.jpeg,.gif,.docx" class="file-input">
+            <label class="file-label" for="fileElem">Select a file</label>
+        </form>
+        <div id="selected-file"></div>
+    </div>
+
+    <style>
+        #drop-area {
+            border: 2px dashed #ccc;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 500px;
+            margin: 20px auto;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+        }
+        #drop-area.highlight {
+            border-color: #666;
+            background-color: #f8f8f8;
+        }
+        .file-input {
+            display: none;
+        }
+        .file-label {
+            display: inline-block;
+            background-color: lightslategray;
+            color: white;
+            padding: 10px 15px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .file-label:hover {
+            background-color: slategray;
+        }
+        #selected-file {
+            margin-top: 15px;
+            font-style: italic;
+            color: #555;
+        }
+    </style>
+
+    <script>
+        // Drag and drop functionality
+        const dropArea = document.getElementById('drop-area');
+        const fileInput = document.getElementById('fileElem');
+        const selectedFile = document.getElementById('selected-file');
+        
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        // Highlight drop area when dragging over it
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, unhighlight, false);
+        });
+        
+        // Handle dropped files
+        dropArea.addEventListener('drop', handleDrop, false);
+        dropArea.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFiles);
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        function highlight() {
+            dropArea.classList.add('highlight');
+        }
+        
+        function unhighlight() {
+            dropArea.classList.remove('highlight');
+        }
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }
+        
+        function handleFiles(e) {
+            const files = e.target ? e.target.files : e;
+            if (files.length) {
+                const file = files[0];
+                selectedFile.textContent = `Selected file: ${file.name}`;
+                submitForm(file);
+            }
+        }
+        
+        function submitForm(file) {
+            // Create a FormData and submit
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            fetch('{{ url_for("home") }}', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) return response.blob();
+                throw new Error('Network response was not ok.');
+            })
+            .then(blob => {
+                // Create a download link for the MP3
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                // Get original filename but with mp3 extension
+                const originalName = file.name.split('.')[0];
+                a.download = `${originalName}.mp3`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                selectedFile.textContent = `Converted to MP3 and downloaded: ${a.download}`;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                selectedFile.textContent = 'Error processing file. Please try again.';
+            });
+        }
+    </script>
+{% endblock %}

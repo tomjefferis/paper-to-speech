@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}File Upload{% endblock %}
+
+{% block content %}
+    <h1>Upload a File and Change its Extension</h1>
+    
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <ul class="flashes">
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+    
+    <form method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="file">Select a file:</label>
+            <input type="file" id="file" name="file" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="new_extension">New file extension (without dot):</label>
+            <input type="text" id="new_extension" name="new_extension" placeholder="e.g. txt" required>
+        </div>
+        
+        <button type="submit">Upload and Convert</button>
+    </form>
+{% endblock %}

@@ -1,0 +1,115 @@
+.navbar {
+    background-color: lightslategray;
+    font-size: 1em;
+    font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    color: white;
+    padding: 8px 5px 8px 5px;
+}
+
+.navbar a {
+    text-decoration: none;
+    color: inherit;
+}
+
+.navbar-brand {
+    font-size: 1.2em;
+    font-weight: 600;
+}
+
+.navbar-item {
+    font-variant: small-caps;
+    margin-left: 30px;
+}
+
+.body-content {
+    padding: 5px;
+    font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* New styles for the upload form */
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.form-group input {
+    padding: 8px;
+    width: 100%;
+    max-width: 300px;
+}
+
+button {
+    background-color: lightslategray;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: slategray;
+}
+
+.button {
+    display: inline-block;
+    background-color: lightslategray;
+    color: white;
+    padding: 10px 15px;
+    text-decoration: none;
+}
+
+.button:hover {
+    background-color: slategray;
+}
+
+.flashes {
+    color: red;
+    list-style-type: none;
+    padding: 0;
+}
+
+/* Drag and drop styles */
+#drop-area {
+    border: 2px dashed #ccc;
+    border-radius: 20px;
+    width: 100%;
+    max-width: 500px;
+    margin: 20px auto;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+}
+
+#drop-area.highlight {
+    border-color: #666;
+    background-color: #f8f8f8;
+}
+
+.file-input {
+    display: none;
+}
+
+.file-label {
+    display: inline-block;
+    background-color: lightslategray;
+    color: white;
+    padding: 10px 15px;
+    cursor: pointer;
+    margin-top: 10px;
+    border-radius: 4px;
+}
+
+.file-label:hover {
+    background-color: slategray;
+}
+
+#selected-file {
+    margin-top: 15px;
+    font-style: italic;
+    color: #555;
+}
