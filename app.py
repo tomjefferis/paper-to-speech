@@ -84,7 +84,12 @@ def convert_to_speech():
     selected_chapters = [chapters[i] for i in selected_indices if i < len(chapters)]
     
     # Combine all selected chapter texts
-    combined_text = "\n\n".join([chapter["content"] for chapter in selected_chapters])
+    # Check if chapters are in dict format or tuple format
+    if isinstance(selected_chapters[0], dict):
+        combined_text = "\n\n".join([chapter["content"] for chapter in selected_chapters])
+    else:
+        # Handle tuple format (title, content)
+        combined_text = "\n\n".join([chapter[1] for chapter in selected_chapters])
     
     # Get original file path and create a base name for the output file
     original_path = session['original_file']

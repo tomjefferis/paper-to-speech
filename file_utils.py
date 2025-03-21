@@ -261,6 +261,7 @@ def process_document(file_path, model_name="gemini-2.0-flash"):
         
     Returns:
         list: A list containing a single tuple with ("Full Document", sanitized_text)
+               formatted as (title, content) for consistency
     """
     # Step 1: Extract text from the document
     text = extract_text_from_document(file_path)
@@ -270,11 +271,13 @@ def process_document(file_path, model_name="gemini-2.0-flash"):
     
     # Count tokens using the API method
     token_count = count_tokens(text)
+    print(f"Document token count: {token_count}")
     
     # Step 2: Sanitize the text for speech synthesis using LLM
     sanitized_text = sanitize_text_for_speech(text, model_name)
     
     # Return the sanitized document as a single section
+    # Using tuple format (title, content) for consistency
     return [("Full Document", sanitized_text)]
 
 def text_to_speech_apple(text, output_folder, file_basename):
