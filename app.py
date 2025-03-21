@@ -3,7 +3,7 @@ import os
 import json
 from werkzeug.utils import secure_filename
 import atexit
-from file_utils import change_file_extension, delayed_cleanup, clean_upload_folder, process_document, text_to_speech_apple
+from file_utils import change_file_extension, delayed_cleanup, clean_upload_folder, process_document, text_to_speech_kokoro
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -57,8 +57,8 @@ def home():
             # Get base filename for output
             file_basename = os.path.splitext(filename)[0]
             
-            # Convert text to speech
-            mp3_path = text_to_speech_apple(sanitized_text, app.config['UPLOAD_FOLDER'], file_basename)
+            # Convert text to speech using Kokoro TTS
+            mp3_path = text_to_speech_kokoro(sanitized_text, app.config['UPLOAD_FOLDER'], file_basename)
             
             if not mp3_path or not os.path.exists(mp3_path):
                 return jsonify({'error': 'Failed to convert text to speech'}), 500
@@ -112,8 +112,8 @@ def convert_to_speech():
     original_path = session['original_file']
     file_basename = os.path.splitext(os.path.basename(original_path))[0]
     
-    # Convert text to speech using Apple's say command and lame for MP3 conversion
-    mp3_path = text_to_speech_apple(combined_text, app.config['UPLOAD_FOLDER'], file_basename)
+    # Convert text to speech using Kokoro TTS
+    mp3_path = text_to_speech_kokoro(combined_text, app.config['UPLOAD_FOLDER'], file_basename)
     
     if not mp3_path or not os.path.exists(mp3_path):
         return jsonify({'error': 'Failed to convert text to speech'}), 500

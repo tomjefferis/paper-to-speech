@@ -4,3 +4,8 @@ PyPDF2
 python-docx
 google-genai
 python-dotenv
+numpy
+soundfile
+torch
+# Optional: Try to install kokoro but don't fail if it can't be installed
+kokoro; 
