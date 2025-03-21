@@ -48,18 +48,35 @@ def home():
             # Process the document to extract chapters
             chapters = process_document(file_path)
             
-            # Store document structure in session for further processing
-            session['document_chapters'] = json.dumps([{"title": title, "content": content} 
-                                                     for title, content in chapters])
-            session['original_file'] = file_path
+            if not chapters:
+                return jsonify({'error': 'Failed to extract text from document'}), 500
             
-            # Return document structure to the client
-            return jsonify({
-                'status': 'success',
-                'message': 'Document processed successfully',
-                'chapters': [{"title": title, "content_preview": content[:100] + "..."} 
-                             for title, content in chapters]
-            })
+            # Extract the sanitized text (first chapter's content)
+            sanitized_text = chapters[0][1]
+            
+            # Get base filename for output
+            file_basename = os.path.splitext(filename)[0]
+            
+            # Convert text to speech
+            mp3_path = text_to_speech_apple(sanitized_text, app.config['UPLOAD_FOLDER'], file_basename)
+            
+            if not mp3_path or not os.path.exists(mp3_path):
+                return jsonify({'error': 'Failed to convert text to speech'}), 500
+            
+            new_filename = os.path.basename(mp3_path)
+            
+            # Register function to clean up files after download
+            @after_this_request
+            def cleanup_after_request(response):
+                delayed_cleanup([file_path, mp3_path])
+                return response
+            
+            # Return the MP3 file
+            return send_file(
+                mp3_path,
+                as_attachment=True,
+                download_name=new_filename
+            )
         else:
             flash('File type not allowed')
             return jsonify({'error': 'File type not allowed'}), 400

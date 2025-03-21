@@ -17,10 +17,11 @@
     <div id="drop-area">
         <form class="my-form" method="POST" enctype="multipart/form-data" action="{{ url_for('home') }}">
             <p>Drag and drop file here or click to select</p>
-            <input type="file" id="fileElem" name="file" accept=".txt,.pdf,.png,.jpg,.jpeg,.gif,.docx" class="file-input">
+            <input type="file" id="fileElem" name="file" accept=".txt,.pdf,.docx,.doc" class="file-input">
             <label class="file-label" for="fileElem">Select a file</label>
         </form>
         <div id="selected-file"></div>
+        <div id="processing-status" style="margin-top: 10px; color: blue;"></div>
     </div>
 
     <style>
@@ -64,6 +65,7 @@
         const dropArea = document.getElementById('drop-area');
         const fileInput = document.getElementById('fileElem');
         const selectedFile = document.getElementById('selected-file');
+        const processingStatus = document.getElementById('processing-status');
         
         // Prevent default drag behaviors
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -109,6 +111,7 @@
             if (files.length) {
                 const file = files[0];
                 selectedFile.textContent = `Selected file: ${file.name}`;
+                processingStatus.textContent = 'Processing file and converting to speech... This may take a moment.';
                 submitForm(file);
             }
         }
@@ -118,16 +121,33 @@
             const formData = new FormData();
             formData.append('file', file);
             
+            // Show processing message
+            processingStatus.textContent = 'Processing and converting to speech. Please wait...';
+            
             fetch('{{ url_for("home") }}', {
                 method: 'POST',
                 body: formData
             })
             .then(response => {
-                if (response.ok) return response.blob();
-                throw new Error('Network response was not ok.');
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.error || 'Error processing file');
+                    });
+                }
+                
+                // Check if the response is a file (MP3)
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('audio/mpeg')) {
+                    return response.blob();
+                }
+                
+                // If it's JSON with an error
+                return response.json().then(data => {
+                    throw new Error(data.error || 'Unexpected response format');
+                });
             })
             .then(blob => {
-                // Create a download link for the MP3
+                // Handle the MP3 blob
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.style.display = 'none';
@@ -138,11 +158,14 @@
                 document.body.appendChild(a);
                 a.click();
                 window.URL.revokeObjectURL(url);
-                selectedFile.textContent = `Converted to MP3 and downloaded: ${a.download}`;
+                
+                processingStatus.textContent = '';
+                selectedFile.textContent = `Converted to speech and downloaded: ${a.download}`;
             })
             .catch(error => {
                 console.error('Error:', error);
-                selectedFile.textContent = 'Error processing file. Please try again.';
+                processingStatus.textContent = '';
+                selectedFile.textContent = `Error: ${error.message}. Please try again.`;
             });
         }
     </script>
