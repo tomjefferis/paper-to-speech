@@ -1,0 +1,43 @@
+<!-- ...existing code... -->
+
+<div class="container mt-5">
+    <h1 class="text-center mb-4">Paper to Speech</h1>
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Upload Document</h3>
+                </div>
+                <div class="card-body">
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <div class="form-group mb-3">
+                            <label for="file">Choose a PDF or Word document:</label>
+                            <input type="file" class="form-control" name="file" id="file" accept=".pdf,.doc,.docx" required>
+                        </div>
+                        
+                        <!-- TTS Engine Selection with Radio Buttons for better visualization -->
+                        <div class="form-group mb-3">
+                            <label>Select Text-to-Speech Engine:</label>
+                            <div id="ttsEngineOptions" class="mt-2">
+                                <!-- Options will be populated by JavaScript -->
+                                <div class="spinner-border spinner-border-sm" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <span class="ml-2">Loading available engines...</span>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary" id="uploadBtn">
+                            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" id="uploadSpinner"></span>
+                            Convert to Speech
+                        </button>
+                    </form>
+                    
+                    <!-- ...existing code... -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ...existing code... -->

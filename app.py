@@ -3,7 +3,8 @@ import os
 import json
 from werkzeug.utils import secure_filename
 import atexit
-from file_utils import change_file_extension, delayed_cleanup, clean_upload_folder, process_document, text_to_speech_kokoro
+import file_utils  # Fix the missing import
+from file_utils import change_file_extension, delayed_cleanup, clean_upload_folder, process_document, text_to_speech_kokoro, text_to_speech
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -45,8 +46,11 @@ def home():
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(file_path)
             
-            # Process the document to extract chapters
-            chapters = process_document(file_path)
+            # Get the sanitizer from the form data, default to gemini if not specified
+            sanitizer = request.form.get('sanitizer', 'gemini')
+            
+            # Process the document to extract chapters using selected sanitizer
+            chapters = process_document(file_path, sanitizer=sanitizer)
             
             if not chapters:
                 return jsonify({'error': 'Failed to extract text from document'}), 500
@@ -54,26 +58,31 @@ def home():
             # Extract the sanitized text (first chapter's content)
             sanitized_text = chapters[0][1]
             
-            # Get base filename for output
-            file_basename = os.path.splitext(filename)[0]
+            # Get the TTS engine from the form data, default to kokoro if not specified
+            tts_engine = request.form.get('tts_engine', 'kokoro')
             
-            # Convert text to speech using Kokoro TTS
-            mp3_path = text_to_speech_kokoro(sanitized_text, app.config['UPLOAD_FOLDER'], file_basename)
+            # Generate the audio file
+            audio_file = text_to_speech(
+                sanitized_text, 
+                app.config['UPLOAD_FOLDER'], 
+                os.path.splitext(filename)[0],
+                engine=tts_engine
+            )
             
-            if not mp3_path or not os.path.exists(mp3_path):
+            if not audio_file or not os.path.exists(audio_file):
                 return jsonify({'error': 'Failed to convert text to speech'}), 500
             
-            new_filename = os.path.basename(mp3_path)
+            new_filename = os.path.basename(audio_file)
             
             # Register function to clean up files after download
             @after_this_request
             def cleanup_after_request(response):
-                delayed_cleanup([file_path, mp3_path])
+                delayed_cleanup([file_path, audio_file])
                 return response
             
             # Return the MP3 file
             return send_file(
-                mp3_path,
+                audio_file,
                 as_attachment=True,
                 download_name=new_filename
             )
@@ -99,6 +108,7 @@ def convert_to_speech():
     
     # Filter chapters based on selected indices
     selected_chapters = [chapters[i] for i in selected_indices if i < len(chapters)]
+
     
     # Combine all selected chapter texts
     # Check if chapters are in dict format or tuple format
@@ -112,6 +122,8 @@ def convert_to_speech():
     original_path = session['original_file']
     file_basename = os.path.splitext(os.path.basename(original_path))[0]
     
+    print(combined_text)
+    
     # Convert text to speech using Kokoro TTS
     mp3_path = text_to_speech_kokoro(combined_text, app.config['UPLOAD_FOLDER'], file_basename)
     
@@ -120,11 +132,11 @@ def convert_to_speech():
     
     new_filename = os.path.basename(mp3_path)
     
-    @after_this_request
-    def cleanup_after_request(response):
-        # Clean up the original document and keep the MP3 file for a short time to ensure download
-        delayed_cleanup([original_path, mp3_path])
-        return response
+    # @after_this_request
+    # def cleanup_after_request(response):
+    #     # Clean up the original document and keep the MP3 file for a short time to ensure download
+    #     delayed_cleanup([original_path, mp3_path])
+    #     return response
     
     return send_file(
         mp3_path,
@@ -142,6 +154,30 @@ def cleanup():
     clean_upload_folder(app.config['UPLOAD_FOLDER'])
     session.clear()
     return jsonify({"status": "success", "message": "Upload folder cleaned"})
+
+# Add or update the route for TTS engines
+@app.route('/tts-engines', methods=['GET'])
+def get_tts_engines():
+    try:
+        engines = file_utils.get_available_tts_engines()
+        print(f"Available TTS engines: {engines}")  # Debug log
+        return jsonify({"engines": engines})
+    except Exception as e:
+        print(f"Error getting TTS engines: {str(e)}")
+        # Always return a valid response even if there's an error
+        return jsonify({"engines": ["kokoro"], "error": str(e)})
+
+# Add route for text sanitizers
+@app.route('/sanitizers', methods=['GET'])
+def get_sanitizers():
+    try:
+        sanitizers = file_utils.get_available_sanitizers()
+        print(f"Available text sanitizers: {sanitizers}")  # Debug log
+        return jsonify({"sanitizers": sanitizers})
+    except Exception as e:
+        print(f"Error getting text sanitizers: {str(e)}")
+        # Always return a valid response even if there's an error
+        return jsonify({"sanitizers": ["gemini"], "error": str(e)})
 
 if __name__ == '__main__':
     app.run(debug=True)
