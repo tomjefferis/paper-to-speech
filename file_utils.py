@@ -193,87 +193,18 @@ def count_tokens(text, model_name="gemini-2.0-flash"):
         # Fall back to estimation if the API call fails
         return len(text) // 4  # Simple approximation as fallback
 
-def sanitize_text_for_speech(text, model_name="gemini-2.0-flash", sanitizer="gemini"):
+def sanitize_text_for_speech(text, model_name="gemini-2.0-flash"):
     """
-    Use Gemini AI or Ollama to sanitize text for speech synthesis - adding proper punctuation,
+    Use Gemini AI to sanitize text for speech synthesis - adding proper punctuation,
     removing content that would sound strange when read aloud, and improving flow.
     
     Args:
         text: Input text to sanitize
         model_name: The model to use (default is gemini-2.0-flash)
-        sanitizer: The text sanitization service to use ("gemini" or "ollama")
         
     Returns:
         str: Text sanitized and optimized for speech synthesis
     """
-    # If Ollama is explicitly selected, try to use it first
-    if sanitizer.lower() == "ollama":
-        try:
-            import importlib.util
-            ollama_spec = importlib.util.find_spec("ollama")
-            
-            if ollama_spec is not None:
-                try:
-                    from ollama import Client
-                    print("Using Ollama for text sanitization...")
-                    
-                    # Initialize custom Ollama client with specified IP
-                    client = Client(
-                        host='http://10.10.10.155:11434'
-                    )
-                    
-                    # Create the prompt for text-to-speech transformation
-                    prompt = f"""
-                    Sanitize the following text for speech synthesis. Your task is to:
-                    
-                    1. Add proper punctuation where it's missing
-                    2. Remove elements that would sound awkward when read aloud (citations, figure references, equations, etc.)
-                    3. Fix any formatting issues that would cause unnatural pauses or readings
-                    4. Ensure proper sentence structure for natural-sounding speech
-                    5. Keep the core content and meaning intact
-                    6. Remove the list of references at the end of the document
-                    7. Ensure the text flows well and is easy to read aloud
-                    8. remove the list of authors and affiliations
-                    9. do not include line breaks in the final text such as "slash n"
-                    10. add punctuation where necessary to make the text sound more natural
-                    11. add chapter headings where appropriate to help with the flow of the text
-                    
-                    Return ONLY the cleaned, speech-ready text without any explanations or comments.
-                    The speech-ready text should of a similar or the same length to the original text, whilst keeping all meaning intact.
-                    """
-                    
-                    # Request to Ollama API using the custom client
-                    response = client.chat(
-                        model="gemma3:12b",  # Using Gemma3:12b for text sanitization
-                        messages=[
-                            {
-                                'role': 'user',
-                                'content': prompt + "\n\nHere is the text to sanitize:\n\n" + text
-                            }
-                        ],
-                        options={
-                            "temperature": 0.3,  # Lower temperature for more consistent output
-                            "num_ctx": 128000     # Larger context window to handle longer documents
-                        }
-                    )
-                    # Extract the response content
-                    if response and 'message' in response and 'content' in response['message']:
-                        sanitized_text = response['message']['content']
-                        if sanitized_text:
-                            print("Ollama text sanitization successful")
-                            return sanitized_text
-                    
-                    print("Ollama returned empty or invalid response, falling back to Gemini")
-                except Exception as e:
-                    print(f"Error using Ollama for text sanitization: {e}")
-                    if sanitizer.lower() == "ollama":
-                        print("Ollama was explicitly selected but failed. Falling back to Gemini.")
-            else:
-                print("Ollama package not available, using Gemini for text sanitization")
-        except ImportError:
-            print("Ollama package not available, using Gemini for text sanitization")
-    
-    # Use Gemini if selected or if Ollama failed/not available
     try:
         print("Using Gemini for text sanitization...")
         # Count tokens before processing using the API method
@@ -289,6 +220,7 @@ def sanitize_text_for_speech(text, model_name="gemini-2.0-flash", sanitizer="gem
         client = genai.Client(api_key=api_key)
         
         # Create a prompt that asks for text sanitization for speech synthesis
+        # This is the original sanitization prompt for full text processing
         prompt = """
         Sanitize the following text for speech synthesis. Your task is to:
         
@@ -300,7 +232,8 @@ def sanitize_text_for_speech(text, model_name="gemini-2.0-flash", sanitizer="gem
         6. Remove the list of references at the end of the document
         7. Ensure the text flows well and is easy to read aloud
         8. remove the list of authors and affiliations
-        9. do not include line breaks in the final text such as "slash n"
+        9. do not include line breaks or anything that would sound weird when read aloud in the final text, such as "slash n"
+        10. make sure all acronyms are expanded to be read properly, for example ERP should be expanded to Event-Related Potential
         
         Return ONLY the cleaned, speech-ready text without any explanations or comments. 
         The speech-ready text should of a similar or the same length to the original text, whilst keeping all meaning intact.
@@ -321,17 +254,78 @@ def sanitize_text_for_speech(text, model_name="gemini-2.0-flash", sanitizer="gem
         print(f"Error sanitizing text for speech: {e}")
         return text  # Return original text if sanitization fails
 
-def process_document(file_path, model_name="gemini-2.0-flash", sanitizer="gemini"):
+def summarize_text_for_speech(text, model_name="gemini-2.0-flash"):
     """
-    Process a document end-to-end: extract text and sanitize it for speech synthesis.
+    Use Gemini AI to create a detailed, structured summary of the text suitable for speech synthesis.
+    
+    Args:
+        text: Input text to summarize
+        model_name: The model to use (default is gemini-2.0-flash)
+        
+    Returns:
+        str: A detailed summary structured with background, methods, results and conclusion
+    """
+    try:
+        print("Creating detailed summary...")
+        # Count tokens before processing
+        token_count = count_tokens(text)
+        print(f"Token count before processing: {token_count}")
+        
+        api_key = get_google_api_key()
+        
+        # Initialize the client with API key
+        client = genai.Client(api_key=api_key)
+        
+        # Create a prompt specifically for detailed summarization with structured sections
+        prompt = """
+        Create a detailed summary of the following academic paper or document. Your summary should:
+        
+        1. Be well-structured and comprehensive while being more concise than the original
+        2. Include clear sections covering:
+           - Background and context
+           - Methods and approach
+           - Key results and findings
+           - Conclusions and implications
+        3. Maintain academic language but optimize for speech readability
+        4. Expand acronyms on first mention
+        5. Remove citations, figure references, and other elements that would sound awkward when read aloud
+        6. Include proper punctuation and transitions for natural-sounding speech
+        7. Preserve the most important numerical results and statistics
+        8. Do not include formatting instructions or comments in the summary
+        9. Do not include headings formatting such as '#' or '##'
+        
+        Format the summary in a way that flows naturally when read aloud, with clear section transitions.
+        
+        RETURN ONLY THE SUMMARY TEXT WITHOUT EXPLANATION OR COMMENTS.
+        
+        Here is the document to summarize:
+        
+        """
+        
+        # Generate content using the specified model
+        response = client.models.generate_content(
+            model=model_name,
+            contents=prompt + text
+        )
+        
+        return response.text.strip()
+            
+    except Exception as e:
+        print(f"Error creating summary for speech: {e}")
+        return text  # Return original text if summarization fails
+
+def process_document(file_path, model_name="gemini-2.0-flash", sanitizer="gemini", processing_mode="full"):
+    """
+    Process a document end-to-end: extract text and prepare it for speech synthesis.
     
     Args:
         file_path: Path to the document file
-        model_name: The Gemini model to use for text sanitization
-        sanitizer: The text sanitization service to use ("gemini" or "ollama")
+        model_name: The Gemini model to use for text processing
+        sanitizer: Parameter kept for backward compatibility
+        processing_mode: Either "full" for direct synthesis or "summary" for detailed summarization
         
     Returns:
-        list: A list containing a single tuple with ("Full Document", sanitized_text)
+        list: A list containing a single tuple with ("Full Document", processed_text)
                formatted as (title, content) for consistency
     """
     # Step 1: Extract text from the document
@@ -344,12 +338,19 @@ def process_document(file_path, model_name="gemini-2.0-flash", sanitizer="gemini
     token_count = count_tokens(text)
     print(f"Document token count: {token_count}")
     
-    # Step 2: Sanitize the text for speech synthesis using specified sanitizer
-    sanitized_text = sanitize_text_for_speech(text, model_name, sanitizer)
+    # Step 2: Process the text based on selected mode
+    if processing_mode == "summary":
+        print("Creating detailed summary for speech synthesis")
+        processed_text = summarize_text_for_speech(text, model_name)
+        title = "Document Summary"
+    else:
+        print("Sanitizing full text for speech synthesis")
+        processed_text = sanitize_text_for_speech(text, model_name)
+        title = "Full Document"
     
-    # Return the sanitized document as a single section
+    # Return the processed document as a single section
     # Using tuple format (title, content) for consistency
-    return [("Full Document", sanitized_text)]
+    return [(title, processed_text)]
 
 def text_to_speech_apple(text, output_folder, file_basename):
     """
@@ -469,114 +470,6 @@ def text_to_speech_kokoro(text, output_folder, file_basename):
         traceback.print_exc()  # Print the full stack trace for debugging
         return None
 
-def text_to_speech_coqui(text, output_folder, file_basename):
-    """
-    Convert text to speech using Coqui TTS with XTTSv2 model and voice cloning.
-    
-    Args:
-        text: The text to convert to speech
-        output_folder: The folder to save the audio files
-        file_basename: The base filename to use for output files
-        
-    Returns:
-        str: Path to the created MP3 file, or None if conversion failed
-    """
-    try:
-        import torch
-        from TTS.api import TTS
-        import subprocess
-        import re
-        
-        # Create temporary WAV file path and final MP3 file path
-        temp_wav_file = os.path.join(output_folder, f"{file_basename}.wav")
-        output_mp3_file = os.path.join(output_folder, f"{file_basename}.mp3")
-        
-        # Path to the reference voice file
-        voice_file = "voices/voice.wav"
-        
-        # Initialize XTTSv2 model
-        print("Initializing XTTSv2 model...")
-        tts = TTS(model_name="tts_models/multilingual/multi-dataset/xtts_v2", progress_bar=True, gpu=True)
-        
-        # Split text into sentences for better chunking
-        # Use regex to find sentences ending with period followed by space or end of string
-        sentences = re.split(r'(?<=\. )|\n', text)
-        # Filter out empty sentences
-        sentences = [sentence.strip() for sentence in sentences if sentence.strip()]
-        
-        print(f"Split text into {len(sentences)} sentences")
-        
-        # If we have no sentences after splitting, treat the whole text as one sentence
-        if not sentences:
-            sentences = [text]
-        
-        # Group sentences into reasonable chunks to avoid processing too many small files
-        # A good chunk size might be around 5-10 sentences or less if they're very long
-        chunks = []
-        current_chunk = []
-        current_length = 0
-        max_chunk_length = 1000  # characters
-        
-        for sentence in sentences:
-            # If adding this sentence would exceed max length and we already have content,
-            # start a new chunk
-            if current_length + len(sentence) > max_chunk_length and current_chunk:
-                chunks.append(" ".join(current_chunk))
-                current_chunk = [sentence]
-                current_length = len(sentence)
-            else:
-                current_chunk.append(sentence)
-                current_length += len(sentence)
-        
-        # Add the last chunk if there's anything left
-        if current_chunk:
-            chunks.append(" ".join(current_chunk))
-        
-        print(f"Grouped into {len(chunks)} processing chunks")
-        
-        # Process each chunk and save to temporary WAV file
-        for i, chunk in enumerate(chunks):
-            print(f"Processing chunk {i+1}/{len(chunks)}")
-            chunk_wav_file = os.path.join(output_folder, f"{file_basename}_chunk_{i}.wav")
-            
-            # Check if chunk is not empty
-            if not chunk.strip():
-                print(f"Skipping empty chunk {i+1}")
-                continue
-                
-            # Generate speech with voice cloning from the reference file
-            tts.tts_to_file(
-                text=chunk,
-                file_path=chunk_wav_file,
-                speaker_wav=voice_file,
-                language="en"
-            )
-            
-            # For the first chunk, just rename, otherwise concatenate
-            if i == 0:
-                shutil.move(chunk_wav_file, temp_wav_file)
-            else:
-                # Combine chunks using sox
-                concat_cmd = ['sox', temp_wav_file, chunk_wav_file, os.path.join(output_folder, f"{file_basename}_combined.wav")]
-                subprocess.run(concat_cmd, check=True)
-                os.remove(temp_wav_file)
-                os.remove(chunk_wav_file)
-                shutil.move(os.path.join(output_folder, f"{file_basename}_combined.wav"), temp_wav_file)
-        
-        # Convert WAV to MP3 using lame
-        lame_cmd = ['lame', '-m', 'm', temp_wav_file, output_mp3_file]
-        subprocess.run(lame_cmd, check=True)
-        
-        # Clean up temporary WAV file
-        cleanup_files([temp_wav_file])
-        
-        print(f"Successfully created MP3 using Coqui TTS with XTTSv2 voice cloning: {output_mp3_file}")
-        return output_mp3_file
-    
-    except Exception as e:
-        print(f"Error converting text to speech with Coqui TTS: {e}")
-        return None
-
 def text_to_speech(text, output_folder, file_basename, engine="kokoro"):
     """
     Convert text to speech using the specified TTS engine.
@@ -585,20 +478,16 @@ def text_to_speech(text, output_folder, file_basename, engine="kokoro"):
         text: The text to convert to speech
         output_folder: The folder to save the audio files
         file_basename: The base filename to use for output files
-        engine: The TTS engine to use ('kokoro', 'coqui', or 'apple')
+        engine: The TTS engine to use ('kokoro' or 'apple')
         
     Returns:
         str: Path to the created MP3 file, or None if conversion failed
     """
     # Select the appropriate TTS engine
-    if engine.lower() == 'kokoro':
-        return text_to_speech_kokoro(text, output_folder, file_basename)
-    elif engine.lower() == 'coqui':
-        return text_to_speech_coqui(text, output_folder, file_basename)
-    elif engine.lower() == 'apple':
+    if engine.lower() == 'apple':
         return text_to_speech_apple(text, output_folder, file_basename)
     else:
-        print(f"Unknown TTS engine: {engine}. Falling back to Kokoro.")
+        # Default to Kokoro for any other value
         return text_to_speech_kokoro(text, output_folder, file_basename)
 
 def get_available_tts_engines():
@@ -608,7 +497,7 @@ def get_available_tts_engines():
     Returns:
         list: List of available TTS engine names
     """
-    available_engines = []
+    available_engines = ['kokoro']  # Kokoro is always available
     
     # Check for Apple 'say' command (macOS only)
     try:
@@ -622,60 +511,6 @@ def get_available_tts_engines():
     except Exception as e:
         print(f"Apple 'say' command not available: {str(e)}")
     
-    # Always add Kokoro as an available engine (since it's a core dependency)
-    try:
-        print("Adding Kokoro engine...")
-        available_engines.append('kokoro')
-        print("Kokoro added")
-    except Exception as e:
-        print(f"Error adding Kokoro: {str(e)}")
-    
-    # Check for Coqui TTS with XTTSv2 model and voice file
-    try:
-        print("Checking for Coqui TTS with XTTSv2...")
-        import importlib.util
-        tts_spec = importlib.util.find_spec("TTS")
-        
-        if tts_spec is not None:
-            # Check if the voice file exists
-            voice_file = "voices/voice.wav"
-            if os.path.exists(voice_file):
-                available_engines.append('coqui')
-                print("Coqui TTS with XTTSv2 and voice file found")
-            else:
-                print(f"Coqui TTS found but voice file not found at {voice_file}")
-        else:
-            print("Coqui TTS module not found")
-    except Exception as e:
-        print(f"Error checking for Coqui TTS: {str(e)}")
-    
-    # Check if Ollama is available for sanitization (not as a TTS engine)
-    try:
-        print("Checking for Ollama for text sanitization...")
-        import importlib.util
-        from ollama import Client
-        
-        # Check if ollama module is available
-        ollama_spec = importlib.util.find_spec("ollama")
-        if ollama_spec is not None:
-            # Try to connect to Ollama
-            try:
-                client = Client(host='http://10.10.10.155:11434')
-                # Just checking if we can get a model list
-                models = client.list()
-                print("Ollama is available for text sanitization")
-            except Exception as inner_e:
-                print(f"Error connecting to Ollama: {str(inner_e)}")
-        else:
-            print("Ollama Python package not installed")
-    except Exception as e:
-        print(f"Error checking for Ollama: {str(e)}")
-    
-    # Always ensure at least one engine is available
-    if not available_engines:
-        print("No engines found, defaulting to kokoro")
-        available_engines = ['kokoro']
-    
     print(f"Final available engines: {available_engines}")
     return available_engines
 
@@ -686,33 +521,8 @@ def get_available_sanitizers():
     Returns:
         list: List of available text sanitization service names
     """
-    available_sanitizers = ["gemini"]  # Gemini is always available
-    
-    # Check if Ollama is available
-    try:
-        print("Checking for Ollama for text sanitization...")
-        import importlib.util
-        from ollama import Client
-        
-        # Check if ollama module is available
-        ollama_spec = importlib.util.find_spec("ollama")
-        if ollama_spec is not None:
-            # Try to connect to Ollama
-            try:
-                client = Client(host='http://10.10.10.155:11434')
-                # Just checking if we can get a model list
-                models = client.list()
-                print("Ollama is available for text sanitization")
-                available_sanitizers.append("ollama")
-            except Exception as inner_e:
-                print(f"Error connecting to Ollama: {str(inner_e)}")
-        else:
-            print("Ollama Python package not installed")
-    except Exception as e:
-        print(f"Error checking for Ollama: {str(e)}")
-    
-    print(f"Available text sanitizers: {available_sanitizers}")
-    return available_sanitizers
+    # Only Gemini is available now
+    return ["gemini"]
 
 
 

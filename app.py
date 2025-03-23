@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, send_file, flash, jsonify, after_this_request, session
 import os
 import json
+import time  # Add the missing time import
 from werkzeug.utils import secure_filename
 import atexit
 import file_utils  # Fix the missing import
@@ -27,70 +28,67 @@ def allowed_file(filename):
 @app.route("/", methods=['GET', 'POST'])
 def home():
     if request.method == 'POST':
-        # Check if the post request has the file part
+        # Check if file was uploaded
         if 'file' not in request.files:
-            flash('No file part')
             return jsonify({'error': 'No file part'}), 400
         
         file = request.files['file']
         
-        # If user does not select file, browser also
-        # submits an empty part without filename
+        # Check if file is empty
         if file.filename == '':
-            flash('No selected file')
-            return jsonify({'error': 'No selected file'}), 400
+            return jsonify({'error': 'No file selected'}), 400
         
-        if file and allowed_file(file.filename):
-            # Save the uploaded file
-            filename = secure_filename(file.filename)
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(file_path)
+        # Get TTS engine and processing mode from form
+        tts_engine = request.form.get('tts_engine', 'kokoro')
+        processing_mode = request.form.get('processing_mode', 'full')
+        sanitizer = request.form.get('sanitizer', 'gemini')
+        
+        # Log the selected options
+        app.logger.info(f"TTS Engine: {tts_engine}")
+        app.logger.info(f"Processing Mode: {processing_mode}")
+        app.logger.info(f"Sanitizer: {sanitizer}")
+        
+        # Create upload folder if it doesn't exist
+        if not os.path.exists(app.config['UPLOAD_FOLDER']):
+            os.makedirs(app.config['UPLOAD_FOLDER'])
+        
+        # Clean previous uploads
+        clean_upload_folder(app.config['UPLOAD_FOLDER'])
+        
+        # Save the uploaded file and get its path
+        original_path, _, _ = change_file_extension(file, app.config['UPLOAD_FOLDER'], 'original')
+        
+        # Process the document and get sections
+        sections = process_document(original_path, sanitizer=sanitizer, processing_mode=processing_mode)
+        
+        # If processing failed, return error
+        if not sections:
+            return jsonify({'error': 'Failed to process document'}), 500
+        
+        # Use only the content from the first section
+        _, content = sections[0]
+        
+        # Convert text to speech using selected engine
+        audio_file = text_to_speech(content, app.config['UPLOAD_FOLDER'], secure_filename(f"output_{int(time.time())}"), tts_engine)
+        
+        if not audio_file:
+            return jsonify({'error': 'Failed to convert text to speech'}), 500
             
-            # Get the sanitizer from the form data, default to gemini if not specified
-            sanitizer = request.form.get('sanitizer', 'gemini')
-            
-            # Process the document to extract chapters using selected sanitizer
-            chapters = process_document(file_path, sanitizer=sanitizer)
-            
-            if not chapters:
-                return jsonify({'error': 'Failed to extract text from document'}), 500
-            
-            # Extract the sanitized text (first chapter's content)
-            sanitized_text = chapters[0][1]
-            
-            # Get the TTS engine from the form data, default to kokoro if not specified
-            tts_engine = request.form.get('tts_engine', 'kokoro')
-            
-            # Generate the audio file
-            audio_file = text_to_speech(
-                sanitized_text, 
-                app.config['UPLOAD_FOLDER'], 
-                os.path.splitext(filename)[0],
-                engine=tts_engine
-            )
-            
-            if not audio_file or not os.path.exists(audio_file):
-                return jsonify({'error': 'Failed to convert text to speech'}), 500
-            
-            new_filename = os.path.basename(audio_file)
-            
-            # Register function to clean up files after download
-            @after_this_request
-            def cleanup_after_request(response):
-                delayed_cleanup([file_path, audio_file])
-                return response
-            
-            # Return the MP3 file
-            return send_file(
-                audio_file,
-                as_attachment=True,
-                download_name=new_filename
-            )
-        else:
-            flash('File type not allowed')
-            return jsonify({'error': 'File type not allowed'}), 400
-    
-    return render_template("home.html")
+        # Set up response for file download
+        response = send_file(
+            audio_file,
+            as_attachment=True,
+            download_name=os.path.basename(audio_file),
+            mimetype='audio/mpeg'
+        )
+        
+        # Schedule cleanup of files after download
+        delayed_cleanup([original_path, audio_file])
+        
+        return response
+        
+    # GET request: show the upload form
+    return render_template('home.html')
 
 @app.route("/convert", methods=['POST'])
 def convert_to_speech():

@@ -23,29 +23,26 @@
                                 <input type="file" class="form-control" name="file" id="file" accept=".pdf,.doc,.docx" required>
                             </div>
                             
-                            <!-- Text Sanitizer Selection -->
-                            <div class="form-group mb-3">
-                                <label>Text Sanitization Service:</label>
-                                <div id="sanitizerOptions" class="mt-2">
-                                    <!-- Options will be populated by JavaScript -->
-                                    <div class="spinner-border spinner-border-sm" role="status">
-                                        <span class="visually-hidden">Loading...</span>
-                                    </div>
-                                    <span class="ml-2">Loading available sanitizers...</span>
+                            <!-- Processing Mode Selection -->
+                            <div class="form-group mb-4">
+                                <label>Processing Mode:</label>
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="radio" name="processing_mode" id="mode-full" value="full" checked>
+                                    <label class="form-check-label" for="mode-full">
+                                        <strong>Full Text</strong> - Convert the entire document to speech
+                                    </label>
+                                </div>
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="radio" name="processing_mode" id="mode-summary" value="summary">
+                                    <label class="form-check-label" for="mode-summary">
+                                        <strong>Detailed Summary</strong> - Generate a structured summary with background, methods, results, and conclusion
+                                    </label>
                                 </div>
                             </div>
                             
-                            <!-- TTS Engine Selection with Radio Buttons for better visualization -->
-                            <div class="form-group mb-3">
-                                <label>Select Text-to-Speech Engine:</label>
-                                <div id="ttsEngineOptions" class="mt-2">
-                                    <!-- Options will be populated by JavaScript -->
-                                    <div class="spinner-border spinner-border-sm" role="status">
-                                        <span class="visually-hidden">Loading...</span>
-                                    </div>
-                                    <span class="ml-2">Loading available engines...</span>
-                                </div>
-                            </div>
+                            <!-- Hidden input for TTS engine -->
+                            <input type="hidden" name="tts_engine" value="kokoro">
+                            <input type="hidden" name="sanitizer" value="gemini">
                             
                             <button type="submit" class="btn btn-primary" id="uploadBtn">
                                 <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" id="uploadSpinner"></span>

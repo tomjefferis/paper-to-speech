@@ -175,6 +175,14 @@ function handleFormSubmit(event) {
         formData.append('tts_engine', 'kokoro');
     }
     
+    // Check if processing mode is selected
+    if (!formData.get('processing_mode')) {
+        // If no processing mode is selected, use full as default
+        formData.append('processing_mode', 'full');
+    }
+    
+    console.log("Processing mode:", formData.get('processing_mode'));
+    
     // Submit form data to server
     fetch('/', {
         method: 'POST',
