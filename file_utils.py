@@ -352,46 +352,6 @@ def process_document(file_path, model_name="gemini-2.0-flash", sanitizer="gemini
     # Using tuple format (title, content) for consistency
     return [(title, processed_text)]
 
-def text_to_speech_apple(text, output_folder, file_basename):
-    """
-    Convert text to speech using Apple's 'say' command and convert to MP3 using 'lame'.
-    
-    Args:
-        text: The text to convert to speech
-        output_folder: The folder to save the audio files
-        file_basename: The base filename to use for output files
-        
-    Returns:
-        str: Path to the created MP3 file, or None if conversion failed
-    """
-    try:
-        # Create temporary text file
-        temp_text_file = os.path.join(output_folder, f"{file_basename}_text.txt")
-        with open(temp_text_file, 'w') as f:
-            f.write(text)
-        
-        # Create paths for temporary AIFF file and final MP3 file
-        temp_aiff_file = os.path.join(output_folder, f"{file_basename}.aiff")
-        output_mp3_file = os.path.join(output_folder, f"{file_basename}.mp3")
-        
-        # Use Apple's 'say' command to generate speech and save as AIFF
-        say_cmd = ['say', '-f', temp_text_file, '-o', temp_aiff_file]
-        subprocess.run(say_cmd, check=True)
-        
-        # Convert AIFF to MP3 using lame
-        lame_cmd = ['lame', '-m', 'm', temp_aiff_file, output_mp3_file]
-        subprocess.run(lame_cmd, check=True)
-        
-        # Clean up temporary files
-        cleanup_files([temp_text_file, temp_aiff_file])
-        
-        # Return path to the created MP3 file
-        return output_mp3_file
-    
-    except Exception as e:
-        print(f"Error converting text to speech: {e}")
-        return None
-
 def text_to_speech_kokoro(text, output_folder, file_basename):
     """
     Convert text to speech using Kokoro TTS with sentence-level chunking.
@@ -415,8 +375,12 @@ def text_to_speech_kokoro(text, output_folder, file_basename):
         temp_wav_file = os.path.join(output_folder, f"{file_basename}.wav")
         output_mp3_file = os.path.join(output_folder, f"{file_basename}.mp3")
         
+        # Check for GPU and use it if available
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print(f"Using device: {device}")
+        
         # Initialize Kokoro pipeline
-        pipeline = KPipeline(lang_code='b')  # 'a' for American English
+        pipeline = KPipeline(lang_code='b', device=device)
         
         # Split text into sentences for better processing
         # Use regex to find sentences ending with period followed by space or end of string
@@ -433,18 +397,24 @@ def text_to_speech_kokoro(text, output_folder, file_basename):
         # Process each sentence and collect the audio
         full_audio = []
         
-        for i, sentence in enumerate(sentences):
-            if not sentence:
-                continue
+        # Process sentences in batches for better GPU utilization
+        batch_size = 5  # Adjust based on your GPU memory
+        for i in range(0, len(sentences), batch_size):
+            batch = sentences[i:i+batch_size]
+            print(f"Processing batch {i//batch_size + 1}/{(len(sentences) + batch_size - 1)//batch_size}")
+            
+            for j, sentence in enumerate(batch):
+                if not sentence:
+                    continue
+                    
+                print(f"Processing sentence {i+j+1}/{len(sentences)} with Kokoro")
                 
-            print(f"Processing sentence {i+1}/{len(sentences)} with Kokoro")
-            
-            # Generate speech for this sentence
-            generator = pipeline(sentence, voice='af_heart', speed=1)
-            
-            # Collect audio segments for this sentence
-            for j, (gs, ps, audio) in enumerate(generator):
-                full_audio.append(audio)
+                # Generate speech for this sentence
+                generator = pipeline(sentence, voice='af_heart', speed=1)
+                
+                # Collect audio segments for this sentence
+                for k, (gs, ps, audio) in enumerate(generator):
+                    full_audio.append(audio)
         
         # If there's audio, save it
         if full_audio:
@@ -483,12 +453,8 @@ def text_to_speech(text, output_folder, file_basename, engine="kokoro"):
     Returns:
         str: Path to the created MP3 file, or None if conversion failed
     """
-    # Select the appropriate TTS engine
-    if engine.lower() == 'apple':
-        return text_to_speech_apple(text, output_folder, file_basename)
-    else:
-        # Default to Kokoro for any other value
-        return text_to_speech_kokoro(text, output_folder, file_basename)
+    
+    return text_to_speech_kokoro(text, output_folder, file_basename)
 
 def get_available_tts_engines():
     """
@@ -497,21 +463,8 @@ def get_available_tts_engines():
     Returns:
         list: List of available TTS engine names
     """
-    available_engines = ['kokoro']  # Kokoro is always available
+    available_engines = ['kokoro']  
     
-    # Check for Apple 'say' command (macOS only)
-    try:
-        print("Checking for Apple 'say' command...")
-        result = subprocess.run(['which', 'say'], capture_output=True)
-        if result.returncode == 0:
-            available_engines.append('apple')
-            print("Apple 'say' command found")
-        else:
-            print("Apple 'say' command not found")
-    except Exception as e:
-        print(f"Apple 'say' command not available: {str(e)}")
-    
-    print(f"Final available engines: {available_engines}")
     return available_engines
 
 def get_available_sanitizers():
@@ -521,7 +474,7 @@ def get_available_sanitizers():
     Returns:
         list: List of available text sanitization service names
     """
-    # Only Gemini is available now
+    
     return ["gemini"]
 
 

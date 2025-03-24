@@ -88,71 +88,14 @@ function fetchTTSEngines() {
 
 // Function to fetch available text sanitizers
 function fetchSanitizers() {
-    console.log('Fetching text sanitizers...');
-    const sanitizerOptions = document.getElementById('sanitizerOptions');
-    
+    // This is included for API compatibility but we're not displaying sanitizer options in the UI
     fetch('/sanitizers')
-        .then(response => {
-            console.log('Sanitizers response status:', response.status);
-            // Always parse the response, even if it's an error
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             console.log('Text sanitizers data:', data);
-            // Clear loading message
-            sanitizerOptions.innerHTML = '';
-            
-            // Add available sanitizers as radio buttons
-            if (data.sanitizers && data.sanitizers.length > 0) {
-                data.sanitizers.forEach((sanitizer, index) => {
-                    const radioDiv = document.createElement('div');
-                    radioDiv.className = 'form-check mb-2';
-                    
-                    const radioInput = document.createElement('input');
-                    radioInput.type = 'radio';
-                    radioInput.className = 'form-check-input';
-                    radioInput.name = 'sanitizer';
-                    radioInput.id = `sanitizer-${sanitizer}`;
-                    radioInput.value = sanitizer;
-                    radioInput.checked = index === 0; // Select first option by default
-                    
-                    const radioLabel = document.createElement('label');
-                    radioLabel.className = 'form-check-label';
-                    radioLabel.htmlFor = `sanitizer-${sanitizer}`;
-                    
-                    // Capitalize sanitizer name and add description
-                    const capitalizedSanitizer = sanitizer.charAt(0).toUpperCase() + sanitizer.slice(1);
-                    let description = '';
-                    
-                    switch(sanitizer) {
-                        case 'gemini':
-                            description = 'Google\'s Gemini API for text sanitization (requires API key)';
-                            break;
-                        case 'ollama':
-                            description = 'Local AI-powered text sanitization using Gemma3:12b model';
-                            break;
-                        default:
-                            description = 'Text sanitization service';
-                    }
-                    
-                    radioLabel.innerHTML = `<strong>${capitalizedSanitizer}</strong> - ${description}`;
-                    
-                    radioDiv.appendChild(radioInput);
-                    radioDiv.appendChild(radioLabel);
-                    sanitizerOptions.appendChild(radioDiv);
-                });
-            } else {
-                // If no sanitizers available, show a message
-                console.warn('No text sanitizers found in data');
-                sanitizerOptions.innerHTML = '<div class="alert alert-warning">No text sanitizers available. Using default.</div>' +
-                                           '<input type="hidden" name="sanitizer" value="gemini">';
-            }
         })
         .catch(error => {
             console.error('Error fetching text sanitizers:', error);
-            // Display error and set default
-            sanitizerOptions.innerHTML = '<div class="alert alert-danger">Failed to load text sanitizers. Using default.</div>' +
-                                       '<input type="hidden" name="sanitizer" value="gemini">';
         });
 }
 
@@ -181,6 +124,9 @@ function handleFormSubmit(event) {
         formData.append('processing_mode', 'full');
     }
     
+    // Always include gemini as sanitizer
+    formData.append('sanitizer', 'gemini');
+    
     console.log("Processing mode:", formData.get('processing_mode'));
     
     // Submit form data to server
@@ -193,7 +139,7 @@ function handleFormSubmit(event) {
             // Handle JSON response (error)
             return response.json().then(data => {
                 if (!response.ok) {
-                    throw new Error(data.error || 'Failed to process document');
+                    throw new Error(data.detail || 'Failed to process document');
                 }
                 return data;
             });

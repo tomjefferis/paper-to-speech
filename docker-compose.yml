@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+  paper-to-speech:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./uploads:/app/uploads
+    ports:
+      - "6123:6123"
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: amd
+              count: all
+              capabilities: [gpu]
+    environment:
+      - PYTHONUNBUFFERED=1

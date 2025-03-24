@@ -1,0 +1,14 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+.pytest_cache
+.venv
+venv
+.git
+.gitignore
+.vscode
+uploads/*
+*.mp3
+*.wav

@@ -1,18 +1,11 @@
-# Core dependencies
-flask>=2.0.0
-werkzeug>=2.0.0
-PyPDF2>=3.0.0
-python-docx>=0.8.11
-google-generativeai>=0.3.0
-torch>=2.0.0
-soundfile>=0.12.1
-kokoro>=1.0.0
-
-# TTS engines
-TTS>=0.12.0  # Coqui TTS (optional)
-gTTS>=2.3.2  # Google Text-to-Speech for Ollama fallback
-
-# Utilities
-requests>=2.28.0  # For Ollama API
-ffmpeg-python>=0.2.0  # For audio processing
+flask
+werkzeug
+PyPDF2
+python-docx
+google-generativeai
+torch
+soundfile
+kokoro
+requests
+ffmpeg-python
 
