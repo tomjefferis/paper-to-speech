@@ -1,23 +1,75 @@
-# Flask Template
+# Paper to Speech
 
-This sample repo contains the recommended structure for a Python Flask project. In this sample, we use `flask` to build a web application and the `pytest` to run tests.
+An AI-powered web application that converts academic papers and documents to speech, using text processing and natural-sounding speech synthesis.
 
- For a more in-depth tutorial, see our [Flask tutorial](https://code.visualstudio.com/docs/python/tutorial-flask).
+## Features
 
- The code in this repo aims to follow Python style guidelines as outlined in [PEP 8](https://peps.python.org/pep-0008/).
+- **Document Processing**: Upload PDF or Word (.docx) documents 
+- **AI Text Processing**: Uses Gemini AI to:
+  - Clean and sanitize text for better speech quality
+  - Generate structured summaries with background, methods, results, and conclusions
+- **High-Quality Speech Synthesis**: Converts text to speech using Kokoro TTS with natural-sounding voices
+- **Processing Modes**:
+  - Full Text: Converts the entire document while removing elements that sound awkward when read aloud
+  - Detailed Summary: Creates a concise but comprehensive summary optimized for listening
 
-## Running the Sample
+## Requirements
 
-To successfully run this example, we recommend the following VS Code extensions:
+- Python
+- Google API key for Gemini AI (set in `.env` file)
+- Required Python packages (see `requirements.txt`):
+  - fastapi
+  - uvicorn
+  - PyPDF2
+  - python-docx
+  - google-generativeai
+  - torch
+  - soundfile
+  - kokoro
+  - requests
+  - ffmpeg-python
 
-- [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python)
-- [Python Debugger](https://marketplace.visualstudio.com/items?itemName=ms-python.debugpy)
-- [Pylance](https://marketplace.visualstudio.com/items?itemName=ms-python.vscode-pylance) 
+## Setup
 
-- Open the template folder in VS Code (**File** > **Open Folder...**)
-- Create a Python virtual environment using the **Python: Create Environment** command found in the Command Palette (**View > Command Palette**). Ensure you install dependencies found in the `pyproject.toml` file
-- Ensure your newly created environment is selected using the **Python: Select Interpreter** command found in the Command Palette
-- Run the app using the Run and Debug view or by pressing `F5`
-- To test your app, ensure you have the dependencies from `dev-requirements.txt` installed in your environment
-- Navigate to the Test Panel to configure your Python test or by triggering the **Python: Configure Tests** command from the Command Palette
-- Run tests in the Test Panel or by clicking the Play Button next to the individual tests in the `test_app.py` file
+1. Clone the repository
+2. Create a Python virtual environment:
+   ```
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   ```
+3. Install dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+4. Create a `.env` file with your Google API key:
+   ```
+   GOOGLE_API_KEY=your_api_key_here
+   ```
+
+## Running the Application
+
+Run the application using uvicorn:
+
+```
+python app.py
+```
+
+The application will be available at http://localhost:6123
+
+Alternatively, you can use VS Code's Run and Debug feature to start the app.
+
+## How It Works
+
+1. Users upload a PDF or Word document
+2. The app extracts text from the document
+3. Gemini AI processes the text (either sanitizing for full-text mode or summarizing)
+4. Kokoro TTS converts the processed text to natural-sounding speech
+5. The user receives an MP3 file (or ZIP containing MP3 and transcript for summary mode)
+
+## Privacy
+
+Files are automatically deleted from the server after download to protect user privacy.
+
+## License
+
+This project is licensed under the GNU General Public License v3.0 - see the LICENSE file for details.
